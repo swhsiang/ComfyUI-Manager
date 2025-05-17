@@ -5,102 +5,15 @@ import { $el, ComfyDialog } from "../../scripts/ui.js";
 var docStyle = document.createElement('style');
 docStyle.innerHTML = `
 #chatbot-dialog {
-  width: 300px;
-  height: 600px;
+  width: 10%;
+  height: 60%;
+  top: 37%;
   box-sizing: content-box;
   z-index: 1000;
   overflow-y: auto;
-  // position: fixed;
-  : 0;
-  // top: 0;
+  left: 93%;
 }
 
-.message.user {
-  background-color: #4a4a4a;
-  color: #ffffff;
-  text-align: right;
-  margin-left: auto;
-  margin-right: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 80%;
-}
-
-.message.bot {
-  background-color: #383838;
-  color: #ffffff;
-  text-align: left;
-  margin-left: 10px;
-  margin-right: auto;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 80%;
-}
-`;
-document.head.appendChild(docStyle);
-
-class ChatbotDialog extends ComfyDialog {
-  constructor() {
-    super();
-    this.messages = [];
-    this.input = '';
-    this.init();
-  }
-
-  init() {
-    const content = $el("div.chatbot-container", [
-      $el("div.chat-window", {}, this.messages.map((msg, index) =>
-        $el("div.message", { className: msg.type }, msg.text)
-      )),
-      $el("form.input-box", {
-        onsubmit: (e) => this.handleSubmit(e)
-      }, [
-        $el("input", {
-          type: "text",
-          value: this.input,
-          oninput: (e) => this.input = e.target.value,
-          placeholder: "Type your question..."
-        }),
-        $el("button", { type: "submit" }, "Submit")
-      ])
-    ]);
-
-    this.element = $el("div.comfy-modal", { id: 'chatbot-dialog', parent: document.body }, [ content ]);
-  }
-
-  handleSubmit(e) {
-    e.preventDefault();
-    if (this.input.trim()) {
-      this.messages.push({ type: 'user', text: this.input });
-      this.input = '';
-      this.updateChatWindow();
-      // Here you would send the message to the backend and handle the response
-    }
-  }
-
-  updateChatWindow() {
-    const chatWindow = this.element.querySelector('.chat-window');
-    chatWindow.innerHTML = '';
-    this.messages.forEach((msg, index) => {
-      const messageElement = $el("div.message", { className: msg.type }, msg.text);
-      chatWindow.appendChild(messageElement);
-    });
-  }
-
-  show() {
-    this.element.style.display = "block";
-  }
-
-  close() {
-    this.element.style.display = "none";
-  }
-}
-
-const chatbotDialog = new ChatbotDialog();
-chatbotDialog.show();
-
-var chatbotStyle = document.createElement('style');
-chatbotStyle.innerHTML = `
 .chatbot-container {
   position: fixed;
   right: 0;
@@ -111,7 +24,7 @@ chatbotStyle.innerHTML = `
   display: flex;
   flex-direction: column;
   border-left: 1px solid #3a3a3a;
-  z-index: 10000; /* Ensure it is at the top of the z-axis */
+  z-index: 100; /* Ensure it is at the top of the z-axis */
 }
 
 .chat-window {
@@ -151,6 +64,7 @@ chatbotStyle.innerHTML = `
   margin-right: 10px;
   background-color: #4a4a4a;
   color: #ffffff;
+  min-width: 0; /* Ensure the input can shrink */
 }
 
 .input-box button {
@@ -160,10 +74,83 @@ chatbotStyle.innerHTML = `
   background-color: #4CAF50;
   color: #ffffff;
   cursor: pointer;
+  flex-shrink: 0; /* Prevent the button from shrinking */
+  max-width: 30%; /* Ensure the button takes at most 30% of the space */
+  font-size: calc(0.5em + 1vw); /* Make the text size responsive */
+  white-space: nowrap; /* Prevent text from wrapping */
+  overflow: hidden; /* Hide overflow text */
+  text-overflow: ellipsis; /* Add ellipsis for overflow text */
 }
 
 .input-box button:hover {
   background-color: #45a049;
 }
+
+.side-tool-bar-container.large-sidebar {
+  --sidebar-width: 3.5rem;
+  --sidebar-icon-size: 1rem;
+}
 `;
-document.head.appendChild(chatbotStyle);
+document.head.appendChild(docStyle);
+
+class ChatbotDialog extends ComfyDialog {
+  constructor() {
+    super();
+    this.messages = [];
+    this.input = '';
+    this.init();
+  }
+
+  init() {
+    const content = $el("div.chatbot-container", [
+      $el("div.chat-window", {}, this.messages.map((msg, index) =>
+        $el("div.message", { className: msg.type }, msg.text)
+      )),
+      $el("form.input-box", {
+        onsubmit: (e) => this.handleSubmit(e)
+      }, [
+        $el("input", {
+          type: "text",
+          value: this.input,
+          oninput: (e) => this.input = e.target.value,
+          placeholder: "Type your question..."
+        }),
+        $el("button", { type: "submit" }, "Submit")
+      ])
+    ]);
+
+    const parentContainer = document.querySelector('.comfyui-body-right');
+    // this.element = $el("div", { className: ["comfy-modal", "side-tool-bar-container", "large-sidebar"], id: 'chatbot-dialog', parent: parentContainer }, [ content ]);
+    this.element = $el("div", { className: ["comfy-modal"], id: 'chatbot-dialog', parent: parentContainer }, [ content ]);
+  }
+
+  handleSubmit(e) {
+    e.preventDefault();
+    if (this.input.trim()) {
+      this.messages.push({ type: 'user', text: this.input });
+      this.input = '';
+      this.updateChatWindow();
+      // Here you would send the message to the backend and handle the response
+    }
+  }
+
+  updateChatWindow() {
+    const chatWindow = this.element.querySelector('.chat-window');
+    chatWindow.innerHTML = '';
+    this.messages.forEach((msg, index) => {
+      const messageElement = $el("div.message", { className: msg.type }, msg.text);
+      chatWindow.appendChild(messageElement);
+    });
+  }
+
+  show() {
+    this.element.style.display = "block";
+  }
+
+  close() {
+    this.element.style.display = "none";
+  }
+}
+
+const chatbotDialog = new ChatbotDialog();
+chatbotDialog.show();
