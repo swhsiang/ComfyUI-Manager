@@ -1,7 +1,7 @@
 import { api } from "../../scripts/api.js";
 import { app } from "../../scripts/app.js";
 import { $el, ComfyDialog } from "../../scripts/ui.js";
-import { WebSocketClient as wsClient, WebSocketMessage } from './comfyui-chatbot-ws.js';
+import { chatWsClient, WebSocketMessage } from './comfyui-chatbot-ws.js';
 
 var docStyle = document.createElement('style');
 docStyle.innerHTML = `
@@ -21,7 +21,8 @@ docStyle.innerHTML = `
   top: 0;
   width: 100%; /* Adjusted to take full width */
   height: 100%; /* Adjusted to take full height */
-  background-color: #2a2a2a;
+  background-color: var(--comfy-menu-secondary-bg);
+
   display: flex;
   flex-direction: column;
   border-left: 1px solid #3a3a3a;
@@ -43,19 +44,20 @@ docStyle.innerHTML = `
 }
 
 .message.user {
-  background-color: #4a4a4a;
+  background-color: var(--input-text);
   text-align: right;
 }
 
 .message.bot {
-  background-color:rgb(220, 138, 138);
+  background-color: var(--comfy-menu-secondary-bg);
   text-align: left;
+  color:rgb(12, 12, 12);
 }
 
 .input-box {
   display: flex;
   padding: 10px;
-  border-top: 1px solid #3a3a3a;
+  border-top: 1px solid var(--input-text);
 }
 
 .input-box textarea {
@@ -64,7 +66,7 @@ docStyle.innerHTML = `
   border: none;
   border-radius: 4px;
   margin-right: 10px;
-  background-color: #4a4a4a;
+  background-color: var(--input-text);
   color: #ffffff;
   min-width: 0; /* Ensure the input can shrink */
 }
@@ -73,7 +75,7 @@ docStyle.innerHTML = `
   padding: 8px 16px;
   border: none;
   border-radius: 4px;
-  background-color: #4CAF50;
+  background-color:rgb(107, 166, 109);
   color: #ffffff;
   cursor: pointer;
   flex-shrink: 0; /* Prevent the button from shrinking */
@@ -106,7 +108,7 @@ class ChatbotDialog extends ComfyDialog {
   init() {
     const content = $el("div.chatbot-container", [
       $el("div.chat-window", {}, this.messages.map((msg, index) =>
-        $el("div.message", { className: msg.type }, msg.text)
+        $el("div.message", { className: `message ${msg.type}` }, msg.text)
       )),
       $el("form.input-box", {
         onsubmit: (e) => this.handleSubmit(e)
@@ -134,11 +136,24 @@ class ChatbotDialog extends ComfyDialog {
     // this.element = $el("div", { className: ["comfy-modal", "side-tool-bar-container", "large-sidebar"], id: 'chatbot-dialog', parent: parentContainer }, [ content ]);
     this.element = $el("div", { className: ["comfy-modal"], id: 'chatbot-dialog', parent: parentContainer }, [ content ]);
 
-    wsClient.connection.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      this.messages.push({ type: 'bot', text: message.payload.text });
-      this.updateChatWindow();
-    };
+    if (chatWsClient.connection && chatWsClient.connection.readyState === WebSocket.OPEN) {
+      chatWsClient.connection.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log('[tutor-agent] Received message:', message);
+        this.messages.push({ type: 'bot', text: message.payload.response });
+        this.updateChatWindow();
+      };
+    } else {
+      chatWsClient.connection.onopen = () => {
+        chatWsClient.connection.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          console.log('[tutor-agent] readyState:', chatWsClient.connection.readyState);
+          console.log('[tutor-agent] Received message:', message);
+          this.messages.push({ type: 'bot', text: message.payload.response });
+          this.updateChatWindow();
+        };
+      };
+    }
   }
 
   handleSubmit(e) {
@@ -148,11 +163,13 @@ class ChatbotDialog extends ComfyDialog {
       const message = new WebSocketMessage(
         'user_message',
         new Date().toISOString(),
-        'session_id', // Replace with actual session ID
+        chatWsClient.session_id, // Use the session ID from the WebSocket client
         { text: this.input },
         'user'
       );
-      wsClient.sendMessage(message);
+      console.log('Sending message:', message);
+      console.log('WebSocket readyState:', chatWsClient.connection.readyState);
+      chatWsClient.sendMessage(message);
       this.input = '';
       this.updateChatWindow();
       // Here you would send the message to the backend and handle the response
@@ -163,7 +180,7 @@ class ChatbotDialog extends ComfyDialog {
     const chatWindow = this.element.querySelector('.chat-window');
     chatWindow.innerHTML = '';
     this.messages.forEach((msg, index) => {
-      const messageElement = $el("div.message", { className: msg.type }, msg.text);
+      const messageElement = $el("div.message", { className: `message ${msg.type}` }, msg.text);
       chatWindow.appendChild(messageElement);
     });
   }

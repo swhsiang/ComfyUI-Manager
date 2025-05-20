@@ -1,4 +1,4 @@
-const WEBSOCKET_URL = 'ws://localhost:8080';
+const CHAT_WEBSOCKET_URL = 'ws://localhost:8000/ws/chat';
 
 class WebSocketMessage {
   constructor(type, timestamp, session_id, payload, sender) {
@@ -14,40 +14,49 @@ class WebSocketClient {
   constructor(url) {
     this.url = url;
     this.connection = null;
+    this.session_id = null;
   }
 
   connect() {
     this.connection = new WebSocket(this.url);
 
     this.connection.onopen = () => {
-      console.log('WebSocket connection established');
+      console.log(`[tutor-agent] WebSocket connection established to ${this.url}`);
     };
 
     this.connection.onmessage = (event) => {
       const message = JSON.parse(event.data);
-      console.log('Received message:', message);
-      // Handle the received message
+      console.log(`[tutor-agent] Received message from ${this.url}:`, message);
+      if (message.type === 'init') {
+        this.session_id = message.session_id;
+        console.log(`[tutor-agent] Session ID received: ${this.session_id}`);
+      }
+      // Handle other types of messages
     };
 
     this.connection.onclose = () => {
-      console.log('WebSocket connection closed');
+      console.log(`[tutor-agent] WebSocket connection closed to ${this.url}`);
     };
 
     this.connection.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error(`[tutor-agent] WebSocket error on ${this.url}:`, error);
     };
   }
 
   sendMessage(message) {
     if (this.connection && this.connection.readyState === WebSocket.OPEN) {
+      if (this.session_id) {
+        message.session_id = this.session_id;
+      }
+      console.log(`[tutor-agent] Sending message with session_id: ${this.session_id}`, message);
       this.connection.send(JSON.stringify(message));
     } else {
-      console.error('WebSocket is not open. Ready state:', this.connection.readyState);
+      console.error(`[tutor-agent] WebSocket is not open. Ready state:`, this.connection.readyState);
     }
   }
 }
 
-const wsClient = new WebSocketClient(WEBSOCKET_URL);
-wsClient.connect();
+const chatWsClient = new WebSocketClient(CHAT_WEBSOCKET_URL);
+chatWsClient.connect();
 
-export default wsClient;
+export { chatWsClient, WebSocketMessage  };
